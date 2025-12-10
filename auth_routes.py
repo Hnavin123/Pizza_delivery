@@ -1,10 +1,11 @@
 from fastapi import APIRouter, status, Depends
 from sqlalchemy.orm import Session
 from database import get_db
-from schemas import SignUpModel
+from schemas import SignUpModel, LoginModel
 from models import User
 from fastapi.exceptions import HTTPException
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
+from fastapi_jwt_auth import AuthJWT 
 
 auth_router = APIRouter(
     prefix="/auth",
@@ -36,3 +37,11 @@ async def signup(user: SignUpModel, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
     return new_user
+
+
+@auth_router.post('/login')
+async def login(user:LoginModel, Authorize: AuthJWT = Depends()):
+    db_user = db.query(User).filter(User.username == user.username).first()
+    
+    if db_user and check_password_hash(db_user.password, user.password):
+        raise HTTPException(status_code=400, detail="Invalid username or password")
